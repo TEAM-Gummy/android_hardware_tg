@@ -106,10 +106,16 @@ static int get_scaling_governor() {
     return 0;
 }
 
+#ifdef SET_INTERACTIVE_EXT
+extern void cm_power_set_interactive_ext(int on);
+#endif
+
 static void cm_power_set_interactive(struct power_module *module, int on)
 {
-    if (strncmp(governor, "ondemand", 8) == 0)
-        sysfs_write(NOTIFY_ON_MIGRATE, on ? "1" : "0");
+    sysfs_write(NOTIFY_ON_MIGRATE, on ? "1" : "0");
+#ifdef SET_INTERACTIVE_EXT
+    cm_power_set_interactive_ext(on);
+#endif
 }
 
 
@@ -120,13 +126,14 @@ static void configure_governor()
     if (strncmp(governor, "ondemand", 8) == 0) {
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/up_threshold", "90");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/io_is_busy", "1");
-        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor", "4");
+        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor", "2");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/down_differential", "10");
-        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/up_threshold_multi_core", "60");
+        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/up_threshold_multi_core", "70");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/down_differential_multi_core", "3");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/optimal_freq", "918000");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/sync_freq", "1026000");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/up_threshold_any_cpu_load", "80");
+        sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/input_boost", "1134000");
         sysfs_write("/sys/devices/system/cpu/cpufreq/ondemand/sampling_rate", "50000");
 
     } else if (strncmp(governor, "interactive", 11) == 0) {
@@ -178,7 +185,9 @@ static void cm_power_hint(struct power_module *module, power_hint_t hint,
     int duration = 1;
 
     switch (hint) {
+#ifndef NO_TOUCH_BOOST
     case POWER_HINT_INTERACTION:
+#endif
     case POWER_HINT_CPU_BOOST:
         if (boostpulse_open(cm) >= 0) {
             if (data != NULL)
